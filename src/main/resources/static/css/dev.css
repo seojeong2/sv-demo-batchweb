@@ -1,0 +1,19 @@
+.header{
+    color: black; /* 헤더 글자색 */
+    padding: 50px; /* 헤더 안쪽 여백 */
+    text-align: center; /* 헤더 텍스트 가운데 정렬 */
+}
+.sub-header{
+    color: black;
+    padding:20px;
+    text-align: center;
+}
+.result-container {
+    border: gray 5px solid;
+    padding: 20px;
+    margin-top: 30px;
+    /*margin-left: 80px;*/
+    /*margin-right: 80px;*/
+    height: 250px;
+    border-radius: 10px;
+}

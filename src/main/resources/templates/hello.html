@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body>
+
+
+
+<div id="app">
+    <button @click="playAudio">Play Audio</button>
+
+    <button @click="startRecording" :disabled="isRecording">Start Recording</button>
+    <button @click="stopRecording" :disabled="!isRecording">Stop Recording</button>
+</div>
+<script>
+    new Vue({
+        el: '#app',
+        data: {
+            isRecording:false,
+
+            audioStream: null,
+            audioContext: null,
+            audioRecorder: null,
+
+            chunks:[],
+
+        },
+        methods: {
+            playAudio() {
+                // Web Audio API 초기화 및 사용 예제
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+                // 오디오 노드 생성
+                const oscillator = audioContext.createOscillator();
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(440, audioContext.currentTime); // 440 Hz (A4)
+
+                // 오디오 컨텍스트에 연결
+                oscillator.connect(audioContext.destination);
+
+                // 오디오 재생
+                oscillator.start();
+                oscillator.stop(audioContext.currentTime + 1); // 1초 후에 정지
+            },
+            async startRecording() {
+
+                console.log("start recording");
+                try {
+                    this.isRecording = true;
+                    this.chunks = []; // chunk 초기화
+
+                    // 마이크 권한 요청
+                    this.audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+                    // 오디오 녹음기 초기화
+                    this.audioRecorder = new MediaRecorder(this.audioStream);
+                    let chunks = [];
+
+                    // 데이터가 준비되면 호출되는 이벤트 리스너 등록
+                    this.audioRecorder.ondataavailable = (event) => {
+                        if (event.data.size > 0) {
+                            this.chunks.push(event.data); //chunks에 데이터 추가
+                        }
+                    };
+
+                    // 녹음 시작
+                    this.audioRecorder.start();
+                } catch (error) {
+                    console.error('Failed to start recording:', error);
+                }
+            },
+            stopRecording() {
+
+                console.log("stop recording");
+                if (this.isRecording && this.audioRecorder && this.audioRecorder.state !== 'inactive') {
+                    // 녹음 중지
+                    this.audioRecorder.stop();
+                    this.isRecording = false;
+
+                    // Blob 생성
+                    const audioBlob = new Blob(this.chunks, { type: 'audio/wav' });
+                    console.log("audioBlob: " + audioBlob);
+
+                    // 파일 이름 설정
+                    const fileName = 'recorded_audio.wav';
+                    const audioFile = new File([audioBlob], fileName, { type: 'audio/wav' });
+
+                    // 서버로 Blob 전송 (axios를 사용한 예제)
+                    const formData = new FormData();
+                    // formData.append('file', audioBlob);
+                    formData.append('file', audioFile);
+
+                    // axios.post('http://localhost:8080/real-time/upload', formData)
+                    //     .then(response => {
+                    //         console.log('File uploaded successfully:', response.data);
+                    //     })
+                    //     .catch(error => {
+                    //         console.error('Failed to upload file:', error);
+                    //     });
+
+                    // Send audio file to Spring Boot API
+                    fetch('http://localhost:8080/real-time/upload', {
+                        method: 'POST',
+                        body: formData,
+                    })
+                        .then(response => response.text())
+                        .then(data => {
+                            console.log('File uploaded successfully:', data);
+                        })
+                        .catch(error => {
+                            console.error('Failed to upload file:', error);
+                        });
+                }
+            },
+        }
+    });
+</script>
+
+
+</body>
+</html>

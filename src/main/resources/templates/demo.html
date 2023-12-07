@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
+    <link href="/css/bootstrap.css" rel="stylesheet">
+    <link href="/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/css/dev.css" rel="stylesheet">
+</head>
+<body>
+
+
+
+<div id="app">
+    <div class="container">
+        <div class="row">
+            <div class="col">
+                <div class="header">
+                    <h1>화자인증/분류 테스트(웹 마이크 이용)</h1>
+                </div>
+            </div>
+        </div>
+
+
+        <div class="row-cols-lg-1">
+            <div class="sub-header">
+                <h3>인증, 분류 테스트를 진행할 사용자명을 입력하세요.</h3>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-4"></div>
+            <div class="col-4 text-center d-flex align-items-center justify-content-center">
+                <!-- 텍스트와 버튼을 가운데 정렬하고 수평으로 정렬하는 부분 -->
+                <div>
+                    <p><input v-model="username" type="text" placeholder="사용자명 입력" style="height: 50px; width: 200px"/></p>
+                    <span v-if="isNameValid" style="color: green; margin-left: 10px; font-size: 25px;">
+                        <i class="bi bi-check-circle"></i> 올바른 사용자명 입니다.
+                    </span>
+                    <span v-else-if="this.username.trim() === '' && username !== undefined"></span>
+                    <span v-else style="color: red; margin-left: 10px; font-size: 25px;">
+                        <span><i class="bi bi-x-circle-fill" style="color: red"></i> 영어와 숫자의 조합으로 입력하세요.</span>
+                    </span>
+                </div>
+
+            </div>
+            <div class="col-4"></div>
+        </div>
+        <div class="row">
+            <div class="col-3 d-flex align-items-center justify-content-center">
+
+            </div>
+            <div class="col-3 d-flex align-items-center justify-content-center">
+                <button class="btn btn-primary btn-block btn-lg w-100" @click="startRecording" :disabled="isRecording">Start Recording</button>
+
+            </div>
+
+            <div class="col-3 d-flex align-items-center justify-content-center">
+                <button class="btn btn-primary btn-block btn-lg w-100" @click="stopRecording" :disabled="!isRecording">Stop Recording</button>
+            </div>
+            <div class="col-3 d-flex align-items-center justify-content-center">
+
+            </div>
+
+        </div>
+
+        <!--    <div class="row">-->
+        <!--      <div class="col-4 d-flex align-items-center justify-content-center">-->
+        <!--        <button class="btn btn-primary btn-block btn-lg w-100" @click="clickRegister">등록</button>-->
+        <!--      </div>-->
+        <!--      <div class="col-4 d-flex align-items-center justify-content-center">-->
+        <!--        <button class="btn btn-primary btn-block btn-lg w-100" @click="clickAuthenticate">인증</button>-->
+        <!--      </div>-->
+        <!--      <div class="col-4 d-flex align-items-center justify-content-center">-->
+        <!--        <button class="btn btn-primary btn-block btn-lg w-100" @click="clickClassificate">분류</button>-->
+        <!--      </div>-->
+        <!--    </div>-->
+
+        <div class="container">
+
+        </div>
+
+
+    </div>
+
+
+</div>
+<script>
+    new Vue({
+        el: '#app',
+        data: {
+
+            username:'',
+            isRecording:false,
+
+            mediaRecorder: null,
+            audioChunks: [],
+
+        },
+        computed: {
+            isNameValid() { // 사용자명 빈값인지 체크 & 영어+숫자 조합이름 (엔진에서 한글인식X)
+
+                const alphanumericRegex = /^[a-zA-Z0-9]+$/;
+                const nonKoreanRegex = /^[^\uAC00-\uD7A3\u3131-\u3163\u119E\u11A2\u11A8-\u11C2]+$/;
+
+                // return this.username.trim() !== "" && alphanumericRegex.test(this.username);
+                return nonKoreanRegex.test(this.username);
+            }
+        },
+        methods: {
+
+            async startRecording() {
+
+                console.log("start recording");
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true});
+
+                this.mediaRecorder = new MediaRecorder(stream);
+                this.mediaRecorder.ondataavailable = (event) => {
+                    if(event.data.size > 0) {
+                        this.audioChunks.push(event.data);
+                    }
+                };
+
+                this.mediaRecorder.onstop = async () => {
+                    const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
+
+                    const reader = new FileReader();
+                    reader.onloadend = async () => {
+                        const arrayBuffer = reader.result;
+
+                        const audioContext = new (window.AudioContext || window.webkitAudioContext)
+                        const decodedData = await audioContext.decodeAudioData(arrayBuffer);
+
+                        const desiredSampleRate = 16000;
+                        const offlineContext = new OfflineAudioContext(1,decodedData.length, desiredSampleRate);
+                        const source = offlineContext.createBufferSource();
+
+                        source.buffer = decodedData;
+                        source.connect(offlineContext.destination);
+
+                        offlineContext.startRendering().then((renderedBuffer) => {
+                            const renderedBlob = this.bufferToWave(renderedBuffer);
+                            this.uploadAudio(renderedBlob);
+                        });
+                    };
+                    reader.readAsArrayBuffer(audioBlob);
+                };
+
+                this.audioChunks = [];
+                this.mediaRecorder.start();
+                this.isRecording = true;
+            },
+            stopRecording() {
+                console.log("stop recording");
+                if (this.mediaRecorder.state === 'recording') {
+                    this.mediaRecorder.stop();
+                }
+                this.isRecording = false;
+            },
+            bufferToWave(abuffer) {
+              // wav 변환 함수
+                const interleaved = this.interleave(abuffer.getChannelData(0));
+                const dataView = this.encodeWAV(interleaved);
+                const audioBlob = new Blob([dataView], {type:'audio/wav'});
+
+                return audioBlob;
+            },
+            interleave(leftChannel) {
+
+                const bufferLegnth = leftChannel.length;
+                const result = new Float32Array(bufferLegnth * 2);
+                let inputIndex = 0;
+
+                for (let outputIndex = 0; outputIndex < bufferLegnth*2;) {
+                    result[outputIndex++] = leftChannel[inputIndex];
+                    result[outputIndex++] = leftChannel[inputIndex];
+                    inputIndex++;
+                }
+                return result;
+            },
+            encodeWAV(samples) {
+                const buffer = new ArrayBuffer(44 + samples.length * 2);
+                const view = new DataView(buffer);
+
+                // RIFF identifier 'RIFF'
+                view.setUint32(0, 0x52494646, false);
+                // file length excluding RIFF identifier
+                view.setUint32(4, 36 + samples.length * 2, true);
+                // RIFF type 'WAVE'
+                view.setUint32(8, 0x57415645, false);
+                // format chunk identifier 'fmt '
+                view.setUint32(12, 0x666d7420, false);
+                // format chunk length
+                view.setUint32(16, 16, true);
+                // sample format (1 is PCM)
+                view.setUint16(20, 1, true);
+                // channel count
+                view.setUint16(22, 1, true);
+                // sample rate
+                view.setUint32(24, 16000, true);
+                // byte rate (sample rate * block align)
+                view.setUint32(28, 256000, true);
+                // block align (channel count * bytes per sample)
+                view.setUint16(32, 2, true);
+                // bits per sample
+                view.setUint16(34, 16, true);
+                // data chunk identifier 'data'
+                view.setUint32(36, 0x64617461, false);
+                // data chunk length
+                view.setUint32(40, samples.length * 2, true);
+
+                // write the PCM samples
+                const data = new Float32Array(samples);
+                let offset = 44;
+                for (let i = 0; i < data.length; i++, offset += 2) {
+                    const sample = Math.max(-1, Math.min(1, data[i]));
+                    view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
+                }
+
+                return view;
+            },
+
+            async uploadAudio(audioBlob) {
+                const formData = new FormData();
+                const fileName = this.username + ".wav";
+                // formData.append('file', audioBlob, 'recorded_audio.wav');
+                formData.append('file', audioBlob, fileName);
+
+                try {
+                    const response = await axios.post('http://localhost:8080/upload', formData);
+                    console.log("Upload success: " + response.data);
+                } catch (error) {
+                    console.error("Upload error: " + error);
+                }
+            }
+
+
+        }
+    });
+</script>
+
+
+</body>
+</html>

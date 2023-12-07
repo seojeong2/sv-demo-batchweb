@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>File Upload Example</title>
+
+    <link href="/css/bootstrap.css" rel="stylesheet">
+    <link href="/css/bootstrap.min.css" rel="stylesheet">
+
+    <link href="/css/dev.css" rel="stylesheet">
+</head>
+<body>
+
+<script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
+<div id="app">
+
+    <div class="header">
+        <h1>화자인증 / 분류 배치테스트</h1>
+    </div>
+
+
+    <h3>파일 업로드(음성파일(.wav, .zip 파일 업로드 필요))</h3>
+    <div class="input-group mb-3">
+        <div class="custom-file">
+
+            <label class="custom-file-label" for="inputGroupFile02"></label>
+            <input type="file" class="custom-file-input" id="inputGroupFile02" accept=".wav, .zip" @change="handleFileChange">
+        </div>
+        <button @click="uploadFile" class="btn btn-success">음성파일 업로드</button>
+    </div>
+
+
+
+    <!--    -->
+<!--    <input type="file" @change="handleFileChange" accept=".wav, .zip"/>-->
+<!--    <button @click="uploadFile" class="btn btn-success">음성파일 업로드</button>-->
+
+<!--    <p>{{message}}</p>-->
+
+    <div v-if="uploadResult">
+        <h2>Upload Result</h2>
+
+
+        <ul class="list-group">
+            <li class="list-group-item" v-for="(path, index) in uploadResult.wavPathList" :key="index"> {{ path }}</li>
+        </ul>
+
+<!--        <ul>-->
+<!--            <li v-for="(path, index) in uploadResult.wavPathList" :key="index">-->
+<!--                {{ path }}-->
+<!--            </li>-->
+<!--        </ul>-->
+    </div>
+
+    <h3>분류 요청</h3>
+
+    <button class="btn btn-primary" @click="sendClassificate"> 분류 요청 </button>
+
+
+    <p>{{response}}</p>
+
+
+</div>
+
+<script>
+      new Vue({
+          el:'#app',
+          data: {
+              message: "",
+              selectedFile: null,
+              response: "",
+              uploadResult: null,
+          },
+          methods: {
+              handleFileChange(event) {
+                  this.selectedFile = event.target.files[0];
+              },
+              uploadFile() {
+                  console.log("click upload button!");
+                  const formData = new FormData();
+                  formData.append('file',this.selectedFile);
+
+                  axios.post('http://localhost:8080/file-upload',formData)
+                      .then(response=>{
+                          //this.message = response.data;
+                          this.uploadResult = response.data;
+                      })
+                      .catch(error => {
+                          //this.message = 'Error uploading file.';
+                          this.uploadResult = "Error";
+                          console.log("error");
+                      })
+              },
+              sendClassificate() {
+                  console.log("click classificate button");
+                  console.log("upload success result: " , this.uploadResult);
+              }
+          },
+
+      })
+</script>
+</body>
+</html>
+
