@@ -1,7 +1,10 @@
 package com.example.svbatchweb.controller;
 
 import com.example.svbatchweb.dto.ClassificateReqDto;
+import com.example.svbatchweb.dto.ClassifyResDto;
+import com.example.svbatchweb.dto.TcpResDto;
 import com.example.svbatchweb.service.FileService;
+import com.example.svbatchweb.service.TcpClient;
 import com.example.svbatchweb.service.VoiceClassificate;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,6 +22,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
 import java.util.List;
 
 @RestController
@@ -32,9 +36,12 @@ public class ApiController {
     private FileService fileService;
     private VoiceClassificate voiceClassificate;
 
-    public ApiController(FileService fileService, VoiceClassificate voiceClassificate) {
+    private TcpClient tcpClient;
+
+    public ApiController(FileService fileService, VoiceClassificate voiceClassificate, TcpClient tcpClient) {
         this.fileService = fileService;
         this.voiceClassificate = voiceClassificate;
+        this.tcpClient = tcpClient;
     }
 
     // 배치테스트
@@ -174,5 +181,60 @@ public class ApiController {
             return ResponseEntity.status(500).body("Failed to upload audio file: " + e.getMessage());
         }
     }
+
+
+    //@PostMapping("/batch/classify")
+    public ResponseEntity<List<ClassifyResDto>> voiceClassify(@RequestBody String[] wavPaths) {
+        log.info("call batch classify controller");
+
+        try{
+            List<ClassifyResDto> resultList = new ArrayList<>();
+
+            for (String wavPath : wavPaths) {
+                log.info("req wav path: " + wavPath);
+                ClassifyResDto classifyResDto = new ClassifyResDto();
+
+                String res = tcpClient.sendClassificationReq(wavPath); // 분류결과
+                //String res = "old male";
+
+                classifyResDto.setWavPath(wavPath);
+                classifyResDto.setClassifyResult(res);
+
+                resultList.add(classifyResDto);
+
+            }
+            log.info("final response list: " + resultList);
+
+            return ResponseEntity.ok(resultList);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
+
+    }
+
+
+    @PostMapping("/batch/classify")
+    public ResponseEntity<String> voiceBatchClassify(@RequestParam String filePath) {
+        log.info("call batch classify controller");
+
+        try{
+            ClassifyResDto classifyResDto = new ClassifyResDto();
+
+            String res = tcpClient.sendClassificationReq(filePath);
+            //String res = "old male"; // 로컬 테스트
+
+            classifyResDto.setWavPath(filePath);
+            classifyResDto.setClassifyResult(res);
+
+            log.info("classify result: " + classifyResDto);
+
+            return ResponseEntity.status(HttpStatus.OK).body(classifyResDto.getClassifyResult());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("error");
+        }
+    }
+
+
+
 
 }
