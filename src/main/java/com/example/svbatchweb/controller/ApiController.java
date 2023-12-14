@@ -16,9 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -221,7 +219,7 @@ public class ApiController {
             ClassifyResDto classifyResDto = new ClassifyResDto();
 
             String res = tcpClient.sendClassificationReq(filePath);
-            //String res = "old male"; // 로컬 테스트
+            //String res = "OM"; // 로컬 테스트
 
             classifyResDto.setWavPath(filePath);
             classifyResDto.setClassifyResult(res);
@@ -233,6 +231,31 @@ public class ApiController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("error");
         }
     }
+
+    @PostMapping("/result/upload")
+    public ResponseEntity<List<String>> uploadResultFile(@RequestParam("txtFile") MultipartFile file) {
+
+        List<String> lines = new ArrayList<>();
+        try ( InputStream inputStream = file.getInputStream();
+              InputStreamReader inputStreamReader = new InputStreamReader(inputStream);
+              BufferedReader br = new BufferedReader(inputStreamReader);
+        ) {
+
+            String line;
+            while ((line = br.readLine()) != null) {
+//                log.info("Read line: " + line);
+                lines.add(line);
+            }
+
+            return ResponseEntity.status(HttpStatus.OK).body(lines);
+
+        } catch (IOException e ){
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+
+    }
+
 
 
 
