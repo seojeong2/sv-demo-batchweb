@@ -17,6 +17,8 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.*;
+import java.net.InetSocketAddress;
+import java.net.Socket;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -257,7 +259,33 @@ public class ApiController {
     }
 
 
+    @GetMapping("/server/status")
+    public String getServerStatus() {
 
+        String ip = "43.202.10.88";
+        int port = 9101;
+
+        boolean isServerAvailable = isServerReachable(ip,port);
+
+        if (isServerAvailable) {
+            return "ON";
+        } else {
+            return "OFF";
+        }
+
+    }
+
+    private boolean isServerReachable(String ip, int port) {
+        try(
+                Socket socket = new Socket();
+        ) {
+            socket.connect(new InetSocketAddress(ip,port),1000);
+            return true;
+
+        } catch (IOException e) {
+            return false;
+        }
+    }
 
 
 }

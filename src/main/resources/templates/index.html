@@ -211,6 +211,9 @@
               // chart: null,
 
           },
+          mounted() {
+            this.serverLiveCheck();
+          },
 
           methods: {
               handleFileChange(event) {
@@ -391,6 +394,23 @@
                       data: this.chartData,
                   });
               },
+
+              serverLiveCheck() {
+                  axios.get("/server/status")
+                      .then(response=> {
+                          const serverStatus = response.data;
+
+                          if (serverStatus === "ON") {
+                              toastr.success("엔진서버가 정상적으로 동작 중입니다.");
+                          } else {
+                              toastr.error("엔진서버에 연결할 수 없습니다.");
+                          }
+                      })
+                      .catch(error => {
+                          console.error("API 호출중 에러: ", error);
+                          toastr.error("엔진 서버에 연결할 수 없습니다.");
+                      })
+              }
 
           },
 
